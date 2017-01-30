@@ -18,6 +18,9 @@ year  <- 2016
 
 cost_per_month <- function(meter = 1, month = 1, year = 2016) {
 
+    # data frame with cost related information to return
+    cost <- data.frame(0)
+
      # read data for required meter
      path <- paste("data/2016_maf_", meter, ".rds", sep = "")
      data <- readRDS(path)
@@ -161,6 +164,16 @@ cost_per_month <- function(meter = 1, month = 1, year = 2016) {
      monthly_cost <- distributor_cost + supplier_cost
      cat(paste("Monthly cost for meter", meter, "is", monthly_cost, "\n"))
 
+    cost[1,1] <- t1
+    cost[2,1] <- t2
+    cost[3,1] <- t3
+    cost[4,1] <- t4
+    cost[5,1] <- t5
+    cost[6,1] <- t6
+    cost[7,1] <- t7
+    cost[8,1] <- t8
+    cost[9,1] <- t9
+    cost[10,1] <- monthly_cost
 
-
+    return(cost)
 }
