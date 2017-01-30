@@ -1,0 +1,29 @@
+API addresses
+
+SUPPLIERS
+curl -X GET -L "http://api.energyhack.sk/suppliers/"
+
+DISTRIBUTORS
+curl -X GET -L "http://api.energyhack.sk/distributors/"
+
+METERS
+curl -X GET -L "http://api.energyhack.sk/meters"
+
+	METERS with ADDRESS
+	curl -X GET -L "https://api.energyhack.sk/meters?address=%7B%22zip%22%3A%2291501%22%7D"
+	METERS with TARIFF
+	curl -X GET -L "http://api.energyhack.sk/meters?tariff=2"
+	METERS with SUPPLIER ID
+	curl -X GET -L "http://api.energyhack.sk/meters?supplierID=3"
+	METERS with MIN RESERVED CAPACITY
+	curl -X GET -L "http://api.energyhack.sk/meters?reservedCapacityMin=44"
+	METERS with MAX RESERVED CAPACITY
+	curl -X GET -L "http://api.energyhack.sk/meters?reservedCapacityMax=44"
+	METER with ID
+	curl -X GET -L "http://api.energyhack.sk/meters/1"
+
+MEASURMENTS with ALL FIELDS
+curl -X GET -L "http://api.energyhack.sk/meters/1/measurements?from=01-2015&to=01-2017&fields=consumption%2CleadingReactivePower%2ClaggingReactivePower"
+
+	MEASURMENTS
+	curl -X GET -L "http://api.energyhack.sk/meters/1/measurements?from=01-2016&to=01-2017"
