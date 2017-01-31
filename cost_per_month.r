@@ -103,7 +103,6 @@ cost_per_month <- function(meter = 1, month = 1, year = 2016) {
     sup_id <- subset(meters, meters$meters.meterID == meter)$meters.supplier$supplierID
     tariff <- subset(meters, meters$meters.meterID == meter)$meters.tariff
     sup_name <- subset(suppliers, suppliers$suppliers.supplierID == sup_id)$suppliers.name
-    supplier_id <- paste(sup_name, tariff, sep = "")
 
     # find values required for further acalculations
     values <- subset(tariffs, tariffs$suppliers.name == sup_name)
