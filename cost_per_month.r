@@ -45,50 +45,48 @@ cost_per_month <- function(meter = 1, month = 1, year = 2016) {
     reserved_capacity <- meters[meters$meters.meterID == meter, ]$meters.reservedCapacity
     cat(paste("Reserved capacity:", reserved_capacity, "\n"))
 
+    # monthly cost for reserved capacity
+    t3 <- reserved_capacity * distributors$distributors.costReservedCapacity
+    cat(paste("Cost for reserved capacity:", t3, "\n"))
+
     # peak value of consumption
     consumption_peak <- max(data[data$measurements.meterID == meter, ]$measurements.maxConsumption)
     cat(paste("Peak consumption value:", consumption_peak, "\n"))
 
     difference <- consumption_peak - reserved_capacity
-    cat(paste("Difference:", difference, "\n"))
-
-    # monthly cost for reserved capacity
-    t3 <- reserved_capacity * distributors$distributors.costReservedCapacity
-    cat(paste("Cost for reserved capacity:", t3, "\n"))
+    cat(paste("Difference, peak - reserved:", difference, "\n"))
 
     # monthly cost for overshooting reserved capacity
     ifelse(difference <= 0, t4 <- 0, t4 <- difference * distributors$distributors.costReservedCapacityOvershoot)
     cat(paste("Cost for overshooting reserved capacity:", t4, "\n"))
 
     # monthly cost for leading reactive power
-    reactive_power <- sum(data[ which( data$measurements.meterID == meter &
-                                    data$measurements.month   == month &
-                                    data$measurements.year    == year), "measurements.leadingReactivePowerSum"])
-    t5 <- reactive_power * distributors$distributors.costLeadingReactivePower
+    leading_reactive_power <- sum(data[data$measurements.meterID == meter, ]$measurements.leadingReactivePowerSum)
+    t5 <- leading_reactive_power * distributors$distributors.costLeadingReactivePower
     cat(paste("Cost for leading reactive power:", t5, "\n"))
 
-    # monthly cost for non effective consumption
-    consumption_non_eff <- sum(data[ which(data$measurements.meterID == meter &
-                                        data$measurements.month   == month &
-                                        data$measurements.year    == year), "measurements.laggingReactivePowerSum"])
-    ratio1 <- consumption_non_eff / consumption_all
+    # monthly cost for lagging reactive power
+    lagging_reactive_power <- sum(data[data$measurements.meterID == meter, ]$measurements.laggingReactivePowerSum)
+    ratio1 <- lagging_reactive_power / consumption_all
 
     # find modifiers
     penalties <- as.data.frame(distributors$distributors.powerFactorPenalties)
     mod2 <- distributors$distributors.costModifierCosFi
-    mod1 <- subset(penalties, ratio1 >= penalties$start & ratio1 <= penalties$end)
+    mod1 <- subset(penalties, ratio1 >= penalties$start & ratio1 <= penalties$end) # reformat THIS!!!!
     mod1 <- mod1$modifier
 
     mod2 <- t1 * (1 + mod2)
     mod1 <- (mod2 + t3) * mod1
     t6   <- mod1
-    cat(paste("Cost for non effective consumption:", t6, "\n"))
+    cat(paste("Cost for lagging reactive power:", t6, "\n"))
 
     # monthly OKTE cost
     t7 <- consumption_all * distributors$distributors.costOKTE
-    cat(paste("Monthly OKTE cost:", t7, "\n"))
+    cat(paste("Cost OKTE:", t7, "\n"))
 
     # cost for consumption
+
+    suppliers$suppliers.tariffValues[[3]][3]
 
     # expand list into a data frame
     tariffs <- as.data.frame(suppliers$suppliers.tariffValues)
