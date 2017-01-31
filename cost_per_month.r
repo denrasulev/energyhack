@@ -13,6 +13,17 @@ distributors <- as.data.frame(fromJSON("distributors.json"))
 
 cost_per_month <- function(meter = 1, month = 1, year = 2016) {
 
+    # validate arguments
+    if (meter < 1 | meter > 1000) {
+        stop("Meter number must be between 1 and 1000", call. = FALSE)
+    }
+    if (month < 1 | month > 12) {
+        stop("Month must be between 1 and 12", call. = FALSE)
+    }
+    if (year < 2016 | year > 2017) {
+        stop("Year must be 2016 or 2017", call. = FALSE)
+    }
+
     # data frame with cost related information to return
     cost <- data.frame(0)
 
@@ -139,7 +150,7 @@ cost_per_month <- function(meter = 1, month = 1, year = 2016) {
 
     # monthly cost without VAT
     monthly_cost <- distributor_cost + supplier_cost
-    cat(paste("Monthly cost for meter", meter, "is", monthly_cost, "\n"))
+    cat(paste("Monthly cost for meter", meter, "in month", month, "is", monthly_cost, "\n"))
 
     cost[1,1] <- t1
     cost[2,1] <- t2
