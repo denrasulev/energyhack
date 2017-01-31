@@ -84,41 +84,22 @@ cost_per_month <- function(meter = 1, month = 1, year = 2016) {
     t7 <- consumption_all * distributors$distributors.costOKTE
     cat(paste("Cost OKTE:", t7, "\n"))
 
-    # cost for consumption
-
-    suppliers$suppliers.tariffValues[[3]][3]
-
-    # expand list into a data frame
-    tariffs <- as.data.frame(suppliers$suppliers.tariffValues)
-    tariffs <- t(tariffs)
-    row.names(tariffs) <- NULL
-
-    # name columns according to tariff values
-    colnames(tariffs) <- c("1", "2", "3", "4", "5", "6")
-
-    # combine everything to one table excluding old column with list
-    tariffs <- cbind(tariffs, suppliers[ ,-2])
-
-    # construct supplier name
-    sup_id <- subset(meters, meters$meters.meterID == meter)$meters.supplier$supplierID
-    tariff <- subset(meters, meters$meters.meterID == meter)$meters.tariff
-    sup_name <- subset(suppliers, suppliers$suppliers.supplierID == sup_id)$suppliers.name
-
-    # find values required for further acalculations
-    values <- subset(tariffs, tariffs$suppliers.name == sup_name)
-    monthly_tariff_value <- values[ ,tariff]
+    # find tariff value
+    sup_id <- as.numeric(meters[meters$meters.meterID == meter, ]$meters.supplier$supplierID)
+    tariff <- as.numeric(meters[meters$meters.meterID == meter, ]$meters.tariff)
+    monthly_tariff_value <- suppliers$suppliers.tariffValues[[sup_id]][tariff]
+    cat("Monthly consumption tariff value:", monthly_tariff_value, "\n")
 
     # high (day) and low (night) cost per kWh
-    cost_high <- values$suppliers.costHigh
-    cost_low  <- values$suppliers.costLow
+    cost_high <- suppliers[suppliers$suppliers.supplierID == sup_id, ]$suppliers.costHigh
+    cost_low  <- suppliers[suppliers$suppliers.supplierID == sup_id, ]$suppliers.costLow
 
     # tolerance +/- % for tolerated measurement
-    tolerance <- values$suppliers.tolerance
+    tolerance <- suppliers[suppliers$suppliers.supplierID == sup_id, ]$suppliers.tolerance
 
     # cost modifiers for over and under consumption
-    over_consumption  <- values$suppliers.costModifierOverconsumption
-    under_consumption <- values$suppliers.costModifierUnderconsumption
-    cat("Monthly consumption tariff value:", monthly_tariff_value, "\n")
+    over_consumption <- suppliers[suppliers$suppliers.supplierID == sup_id, ]$suppliers.costModifierOverconsumption
+    undr_consumption <- suppliers[suppliers$suppliers.supplierID == sup_id, ]$suppliers.costModifierUnderconsumption
 
     # ratio of monthly reserved capacity usage
     ratio2 <- consumption_all / monthly_tariff_value * 100
@@ -126,19 +107,19 @@ cost_per_month <- function(meter = 1, month = 1, year = 2016) {
     cat("Capacity usage ratio:", ratio2, "\n")
 
     # calculate cost modifiers
-    tolerance_high <- 1 + tolerance
-    tolerance_low  <- 1 - tolerance
+    tolerance_upper <- 1 + tolerance
+    tolerance_lower <- 1 - tolerance
 
     # calculate day and night consumptions costs
-    if ( ratio2 >= tolerance_low & ratio2 <= tolerance_high ) {
+    if ( ratio2 >= tolerance_lower & ratio2 <= tolerance_upper ) {
       t8_vt <- consumption_high * cost_high
-      t8_nt <- consumption_low * cost_low
-    } else if ( ratio2 < tolerance_low ) {
-      t8_vt <- consumption_high * cost_high * under_consumption
-      t8_nt <- consumption_low * cost_low * under_consumption
-    } else if ( ratio2 > tolerance_high ) {
+      t8_nt <- consumption_low  * cost_low
+    } else if ( ratio2 < tolerance_lower ) {
+      t8_vt <- consumption_high * cost_high * undr_consumption
+      t8_nt <- consumption_low  * cost_low  * undr_consumption
+    } else if ( ratio2 > tolerance_upper ) {
       t8_vt <- consumption_high * cost_high * over_consumption
-      t8_nt <- consumption_low * cost_low * over_consumption
+      t8_nt <- consumption_low  * cost_low  * over_consumption
     }
 
     # total consumption
@@ -146,7 +127,7 @@ cost_per_month <- function(meter = 1, month = 1, year = 2016) {
     cat(paste("Total cost for consumption:", t8, "\n"))
 
     # tax
-    t9 <- consumption_all * values$suppliers.costTax
+    t9 <- consumption_all * suppliers[suppliers$suppliers.supplierID == sup_id, ]$suppliers.costTax
 
     # distributor cost
     distributor_cost <- t1 + t2 + t3 + t4 + t5 + t6 + t7
