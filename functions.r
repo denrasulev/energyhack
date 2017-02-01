@@ -218,8 +218,6 @@ load_day <- function(meter = 1, day = 1, month = 1, year = 2016, minutes = FALSE
         hour[j] <- sum( data[[1]][i:(i + 3)] )
         j <- j + 1
     }
-
-    # return values
     return(hour)
 }
 
