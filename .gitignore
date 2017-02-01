@@ -3,6 +3,8 @@
 .RData
 .Ruserdata
 .Rapp.history
-API addresses.txt
 /data
+API addresses.txt
+price_calculation.xlsx
+data_structure.pdf
 data.zip
