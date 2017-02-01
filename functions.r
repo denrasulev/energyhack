@@ -239,7 +239,7 @@ load_month <- function(meter = 1, month = 1, year = 2016) {
     path <- paste("data/2016_maf_", meter, ".rds", sep = "")
     data <- readRDS(path)
 
-    # reduce meter data by subsetting to only required day, month and year
+    # reduce meter data by subsetting to only required meter, month and year
     data <- data[   data$measurements.meterID == meter &
                         data$measurements.month   == month &
                         data$measurements.year    == year, ]$measurements.consumption
@@ -263,18 +263,9 @@ load_year <- function(meter = 1, year = 2016) {
         stop("Year must be 2016 or 2017", call. = FALSE)
     }
 
-    # read data for required meter
-    path <- paste("data/2016_maf_", meter, ".rds", sep = "")
-    data <- readRDS(path)
-
-    # reduce meter data by subsetting to only required day, month and year
-    data <- data[   data$measurements.meterID == meter &
-                        data$measurements.month   == month &
-                        data$measurements.year    == year, ]$measurements.consumption
-
     month <- 0
     for (i in 1:12) {
-        month[i] <- sum(month(meter,i,year))
+        month[i] <- sum(load_month(meter,i,year))
     }
     return(month)
 }
