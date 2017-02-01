@@ -1,15 +1,7 @@
 # function for calculation of electricity cost per month
 
-# load libraries
-library(jsonlite)
-
 # set working directory
 setwd("/Volumes/data/projects/energyhack")
-
-# read data in
-meters       <- as.data.frame(fromJSON("meters.json"))
-suppliers    <- as.data.frame(fromJSON("suppliers.json"))
-distributors <- as.data.frame(fromJSON("distributors.json"))
 
 cost_per_month <- function(meter = 1, month = 1, year = 2016) {
 
@@ -24,8 +16,14 @@ cost_per_month <- function(meter = 1, month = 1, year = 2016) {
         stop("Year must be 2016 or 2017", call. = FALSE)
     }
 
+    # validate that required data is in memory
+    library(jsonlite)
+    if (!exists("meters"))       { meters       <- as.data.frame(fromJSON("meters.json")) }
+    if (!exists("suppliers"))    { suppliers    <- as.data.frame(fromJSON("suppliers.json")) }
+    if (!exists("distributors")) { distributors <- as.data.frame(fromJSON("distributors.json")) }
+
     # data frame with cost related information to return
-    cost <- data.frame(0)
+    cost <- as.data.frame(0)
 
     # read data for required meter
     path <- paste("data/2016_maf_", meter, ".rds", sep = "")
@@ -45,123 +43,157 @@ cost_per_month <- function(meter = 1, month = 1, year = 2016) {
     consumption_all <- consumption_high + consumption_low
 
     # monthly cost for consumption without loss
-    t1 <- consumption_all * distributors$distributors.costConsumptionWithoutLoss
-    cat(paste("Cost for consumption without loss:", t1, "\n"))
+    cost_consumption_wout_loss <- consumption_all * distributors$distributors.costConsumptionWithoutLoss
+    cat(paste("Cost for consumption without loss:", cost_consumption_wout_loss, "\n"))
 
     # monthly cost for consumption with loss
-    t2 <- consumption_all * distributors$distributors.costConsumptionWithLoss
-    cat(paste("Cost for consumption with loss:", t2, "\n"))
+    cost_consumption_with_loss <- consumption_all * distributors$distributors.costConsumptionWithLoss
+    cat(paste("Cost for consumption with loss:", cost_consumption_with_loss, "\n"))
 
     # reserved peak capacity
-    reserved_capacity <- meters[meters$meters.meterID == meter, ]$meters.reservedCapacity
-    cat(paste("Reserved capacity:", reserved_capacity, "\n"))
+    reserved_peak_capacity <- meters[meters$meters.meterID == meter, ]$meters.reservedCapacity
+    cat(paste("Reserved capacity:", reserved_peak_capacity, "\n"))
 
     # monthly cost for reserved capacity
-    t3 <- reserved_capacity * distributors$distributors.costReservedCapacity
-    cat(paste("Cost for reserved capacity:", t3, "\n"))
+    cost_reserved_peak_capacity <- reserved_peak_capacity * distributors$distributors.costReservedCapacity
+    cat(paste("Cost for reserved capacity:", cost_reserved_peak_capacity, "\n"))
 
     # peak value of consumption
-    consumption_peak <- max(data[data$measurements.meterID == meter, ]$measurements.maxConsumption)
-    cat(paste("Peak consumption value:", consumption_peak, "\n"))
+    consumption_max_peak <- max(data[data$measurements.meterID == meter, ]$measurements.maxConsumption)
+    cat(paste("Peak consumption value:", consumption_max_peak, "\n"))
 
-    difference <- consumption_peak - reserved_capacity
+    difference <- consumption_max_peak - reserved_peak_capacity
     cat(paste("Difference, peak - reserved:", difference, "\n"))
 
     # monthly cost for overshooting reserved capacity
-    ifelse(difference <= 0, t4 <- 0, t4 <- difference * distributors$distributors.costReservedCapacityOvershoot)
-    cat(paste("Cost for overshooting reserved capacity:", t4, "\n"))
+    ifelse(difference <= 0, cost_exceed_reserved_capacity <- 0, cost_exceed_reserved_capacity <- difference * distributors$distributors.costReservedCapacityOvershoot)
+    cat(paste("Cost for overshooting reserved capacity:", cost_exceed_reserved_capacity, "\n"))
 
     # monthly cost for leading reactive power
     leading_reactive_power <- sum(data[data$measurements.meterID == meter, ]$measurements.leadingReactivePowerSum)
-    t5 <- leading_reactive_power * distributors$distributors.costLeadingReactivePower
-    cat(paste("Cost for leading reactive power:", t5, "\n"))
+    cost_leading_reactive_power <- leading_reactive_power * distributors$distributors.costLeadingReactivePower
+    cat(paste("Cost for leading reactive power:", cost_leading_reactive_power, "\n"))
 
     # monthly cost for lagging reactive power
     lagging_reactive_power <- sum(data[data$measurements.meterID == meter, ]$measurements.laggingReactivePowerSum)
     ratio1 <- lagging_reactive_power / consumption_all
 
     # find modifiers
-    penalties <- as.data.frame(distributors$distributors.powerFactorPenalties)
     mod2 <- distributors$distributors.costModifierCosFi
-    mod1 <- subset(penalties, ratio1 >= penalties$start & ratio1 <= penalties$end) # reformat THIS!!!!
+    penalties <- as.data.frame(distributors$distributors.powerFactorPenalties)
+    mod1 <- subset(penalties, ratio1 >= penalties$start & ratio1 <= penalties$end)
     mod1 <- mod1$modifier
 
-    mod2 <- t1 * (1 + mod2)
-    mod1 <- (mod2 + t3) * mod1
-    t6   <- mod1
-    cat(paste("Cost for lagging reactive power:", t6, "\n"))
+    mod2 <- cost_consumption_wout_loss * (1 + mod2)
+    mod1 <- (mod2 + cost_reserved_peak_capacity) * mod1
+    cost_lagging_reactive_power   <- mod1
+    cat(paste("Cost for lagging reactive power:", cost_lagging_reactive_power, "\n"))
 
     # monthly OKTE cost
-    t7 <- consumption_all * distributors$distributors.costOKTE
-    cat(paste("Cost OKTE:", t7, "\n"))
+    cost_okte <- consumption_all * distributors$distributors.costOKTE
+    cat(paste("Cost OKTE:", cost_okte, "\n"))
 
-    # find tariff value
+    # tariff value
     sup_id <- as.numeric(meters[meters$meters.meterID == meter, ]$meters.supplier$supplierID)
     tariff <- as.numeric(meters[meters$meters.meterID == meter, ]$meters.tariff)
-    monthly_tariff_value <- suppliers$suppliers.tariffValues[[sup_id]][tariff]
-    cat("Monthly consumption tariff value:", monthly_tariff_value, "\n")
+    tariff_monthly_capacity <- suppliers$suppliers.tariffValues[[sup_id]][tariff]
+    cat("Monthly consumption tariff value:", tariff_monthly_capacity, "\n")
+
+    # tariff name
+    sup_name <- suppliers[suppliers$suppliers.supplierID == sup_id, ]$suppliers.name
+    tariff_name <- as.character(paste(sup_name, tariff, sep = ""))
+    cat("Tariff name:", tariff_name, "\n")
 
     # high (day) and low (night) cost per kWh
     cost_high <- suppliers[suppliers$suppliers.supplierID == sup_id, ]$suppliers.costHigh
     cost_low  <- suppliers[suppliers$suppliers.supplierID == sup_id, ]$suppliers.costLow
 
-    # tolerance +/- % for tolerated measurement
+    # tolerance - % for tolerated measurement
     tolerance <- suppliers[suppliers$suppliers.supplierID == sup_id, ]$suppliers.tolerance
+
+    # calculate upper and lower limits of tolerance
+    tolerance_upper <- 1 + tolerance
+    tolerance_lower <- 1 - tolerance
 
     # cost modifiers for over and under consumption
     over_consumption <- suppliers[suppliers$suppliers.supplierID == sup_id, ]$suppliers.costModifierOverconsumption
     undr_consumption <- suppliers[suppliers$suppliers.supplierID == sup_id, ]$suppliers.costModifierUnderconsumption
 
-    # ratio of monthly reserved capacity usage
-    ratio2 <- consumption_all / monthly_tariff_value * 100
+    # ratio of monthly tariff value usage
+    ratio2 <- consumption_all / tariff_monthly_capacity * 100
     cat("Capacity used:", consumption_all, "\n")
     cat("Capacity usage ratio:", ratio2, "\n")
 
-    # calculate cost modifiers
-    tolerance_upper <- 1 + tolerance
-    tolerance_lower <- 1 - tolerance
-
     # calculate day and night consumptions costs
-    if ( ratio2 >= tolerance_lower & ratio2 <= tolerance_upper ) {
-      t8_vt <- consumption_high * cost_high
-      t8_nt <- consumption_low  * cost_low
-    } else if ( ratio2 < tolerance_lower ) {
-      t8_vt <- consumption_high * cost_high * undr_consumption
-      t8_nt <- consumption_low  * cost_low  * undr_consumption
-    } else if ( ratio2 > tolerance_upper ) {
-      t8_vt <- consumption_high * cost_high * over_consumption
-      t8_nt <- consumption_low  * cost_low  * over_consumption
+    if (ratio2 >= tolerance_lower & ratio2 <= tolerance_upper) {
+        cost_consumption_high <- consumption_high * cost_high
+        cost_consumption_low <- consumption_low  * cost_low
+    } else if (ratio2 < tolerance_lower) {
+        cost_consumption_high <- consumption_high * cost_high * undr_consumption
+        cost_consumption_low <- consumption_low  * cost_low  * undr_consumption
+    } else if (ratio2 > tolerance_upper) {
+        cost_consumption_high <- consumption_high * cost_high * over_consumption
+        cost_consumption_low <- consumption_low  * cost_low  * over_consumption
     }
+    cat(paste("Cost of consumption in high rate hours:", cost_consumption_high, "\n"))
+    cat(paste("Cost of consumption in low rate hours:", cost_consumption_low, "\n"))
 
     # total consumption
-    t8 <- t8_vt + t8_nt
-    cat(paste("Total cost for consumption:", t8, "\n"))
+    cost_consumption_all <- cost_consumption_high + cost_consumption_low
+    cat(paste("Total cost for consumption:", cost_consumption_all, "\n"))
 
     # tax
-    t9 <- consumption_all * suppliers[suppliers$suppliers.supplierID == sup_id, ]$suppliers.costTax
+    tax <- consumption_all * suppliers[suppliers$suppliers.supplierID == sup_id, ]$suppliers.costTax
 
     # distributor cost
-    distributor_cost <- t1 + t2 + t3 + t4 + t5 + t6 + t7
-    cat(paste("Distributor cost:", distributor_cost, "\n"))
+    cost_distributor <- sum(cost_consumption_wout_loss,
+                            cost_consumption_with_loss,
+                            cost_reserved_peak_capacity,
+                            cost_exceed_reserved_capacity,
+                            cost_leading_reactive_power,
+                            cost_lagging_reactive_power,
+                            cost_okte)
+    cat(paste("Distributor cost:", cost_distributor, "\n"))
 
     # supplier cost
-    supplier_cost <- t8 + t9
-    cat(paste("Supplier cost:", supplier_cost, "\n"))
+    cost_supplier <- cost_consumption_all + tax
+    cat(paste("Supplier cost:", cost_supplier, "\n"))
 
     # monthly cost without VAT
-    monthly_cost <- distributor_cost + supplier_cost
-    cat(paste("Monthly cost for meter", meter, "in month", month, "is", monthly_cost, "\n"))
+    cost_for_month <- cost_distributor + cost_supplier
+    cat(paste("Total cost for meter", meter, "month", month, "is", cost_for_month, "\n"))
 
-    cost[1,1] <- t1
-    cost[2,1] <- t2
-    cost[3,1] <- t3
-    cost[4,1] <- t4
-    cost[5,1] <- t5
-    cost[6,1] <- t6
-    cost[7,1] <- t7
-    cost[8,1] <- t8
-    cost[9,1] <- t9
-    cost[10,1] <- monthly_cost
+    # usage values
+    cost[1,1]  <- tariff_name
+    cost[2,1]  <- reserved_peak_capacity
+    cost[3,1]  <- consumption_max_peak
+    cost[4,1]  <- difference
+    cost[5,1]  <- tariff_monthly_capacity
+    cost[6,1]  <- tolerance
+    cost[7,1]  <- tolerance_upper
+    cost[8,1]  <- tolerance_lower
+    cost[9,1]  <- consumption_high
+    cost[10,1] <- consumption_low
+    cost[11,1] <- consumption_all
+    cost[12,1] <- ratio2
+
+    # cost of usage
+    cost[13,1] <- cost_consumption_wout_loss
+    cost[14,1] <- cost_consumption_with_loss
+    cost[15,1] <- cost_reserved_peak_capacity
+    cost[16,1] <- cost_exceed_reserved_capacity
+    cost[17,1] <- cost_leading_reactive_power
+    cost[18,1] <- cost_lagging_reactive_power
+    cost[19,1] <- cost_consumption_high
+    cost[20,1] <- cost_consumption_low
+    cost[21,1] <- cost_consumption_all
+    cost[22,1] <- cost_okte
+    cost[23,1] <- tax
+
+    # overall cost for month
+    cost[24,1] <- cost_distributor
+    cost[25,1] <- cost_supplier
+    cost[26,1] <- cost_for_month
 
     # return data frame with found values
     return(cost)
