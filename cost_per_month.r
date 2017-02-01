@@ -1,4 +1,5 @@
 # function to extract and calculate electricity consumption values and costs per month for selected meter, month, year
+# © 2017 Denis Rasulev - ranklord@gmail.com
 
 # set working directory
 setwd("/Volumes/data/projects/energyhack")
@@ -22,15 +23,14 @@ cost_per_month <- function(meter = 1, month = 1, year = 2016) {
     if (!exists("suppliers"))    { suppliers    <- as.data.frame(fromJSON("suppliers.json")) }
     if (!exists("distributors")) { distributors <- as.data.frame(fromJSON("distributors.json")) }
 
-    # data frame with cost related information to return
-    #cost <- as.data.frame(0)
+    # initialize data frame to save values to return
     cost <- as.data.frame(matrix(data = 0, nrow = 26, ncol = 1))
 
     # read data for required meter
     path <- paste("data/2016_maf_", meter, ".rds", sep = "")
     data <- readRDS(path)
 
-    # reduce data by subsetting to only required month and year
+    # reduce meter data by subsetting to only required month and year
     data <- data[data$measurements.month == month & data$measurements.year == year, ]
 
     # monthly consumption at high rate hours 10:00 - 22:00
