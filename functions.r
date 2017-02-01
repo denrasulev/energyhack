@@ -4,7 +4,7 @@
 # set working directory
 setwd("/Volumes/data/projects/energyhack")
 
-# calculate cost per month
+# calculate cost per month ----
 cost_per_month <- function(meter = 1, month = 1, year = 2016) {
 
     # validate arguments
@@ -179,7 +179,7 @@ cost_per_month <- function(meter = 1, month = 1, year = 2016) {
     return(cost)
 }
 
-# get smart meters readings
+# get smart meters readings for day ----
 load_day <- function(meter = 1, day = 1, month = 1, year = 2016, minutes = FALSE) {
 
     # validate arguments
@@ -207,6 +207,7 @@ load_day <- function(meter = 1, day = 1, month = 1, year = 2016, minutes = FALSE
 
     # if minutes flag is TRUE return dayly readings by 15 minutes intervals
     if (minutes) {
+        #return list of values
         return(data[[1]])
     }
 
@@ -218,10 +219,12 @@ load_day <- function(meter = 1, day = 1, month = 1, year = 2016, minutes = FALSE
         hour[j] <- sum( data[[1]][i:(i + 3)] )
         j <- j + 1
     }
+
+    #return list of values
     return(hour)
 }
 
-# get smart meters readings
+# get smart meters readings for month ----
 load_month <- function(meter = 1, month = 1, year = 2016) {
 
     # validate arguments
@@ -249,10 +252,12 @@ load_month <- function(meter = 1, month = 1, year = 2016) {
     for (i in 1:length(data)) {
         days[i] <- sum(Reduce("+", data[i]))
     }
+
+    #return list of values
     return(days)
 }
 
-# get smart meters readings
+# get smart meters readings for year ----
 load_year <- function(meter = 1, year = 2016) {
 
     # validate arguments
@@ -263,9 +268,12 @@ load_year <- function(meter = 1, year = 2016) {
         stop("Year must be 2016 or 2017", call. = FALSE)
     }
 
+    # sum all data per months
     month <- 0
     for (i in 1:12) {
         month[i] <- sum(load_month(meter,i,year))
     }
+
+    #return list of values
     return(month)
 }
